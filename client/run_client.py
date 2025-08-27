@@ -1,4 +1,4 @@
-from controller.mqtt_handler import MqttHandler
+from src.mqtt_handler import MqttHandler
 import os
 from dotenv import load_dotenv
 
