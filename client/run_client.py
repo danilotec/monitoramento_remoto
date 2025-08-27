@@ -14,3 +14,7 @@ def run_mqtt():
    
     client = MqttHandler(broker, port, user, password, topics)
     client.run_mqtt_client()
+
+
+if __name__ == '__main__':
+    run_mqtt()

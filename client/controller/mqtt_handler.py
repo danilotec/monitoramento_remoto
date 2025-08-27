@@ -1,15 +1,16 @@
-from ..utils.base_mqtt import MqttClient
+from .utils.base_mqtt import MqttClient
 import json
 from .email_handler import HandleMail
+import redis
 import threading
 import logging
 
-# Configurar logging
 logger = logging.getLogger(__name__)
 
 class MqttHandler(MqttClient):
     def __init__(self, broker: str, port: int, username: str, password: str, topic: str) -> None:
         super().__init__(broker, port, username, password, topic)
+        self.data_base = redis.Redis(decode_responses=True)
     
     def on_connect(self, client, userdata, flags, rc) -> None:
         if rc == 0:
@@ -29,11 +30,7 @@ class MqttHandler(MqttClient):
                 self._process_email_notification(msg.payload.decode())
             else:
                 dados = json.loads(msg.payload.decode())
-                
-                # Processar dados no banco de forma síncrona
-                self._process_database_data(dados, msg)
-                
-                # Enviar email de forma assíncrona para não bloquear MQTT
+                self._process_database_data(dados)
                 self._process_email_notification(dados)
             
         except json.JSONDecodeError as e:
@@ -41,35 +38,39 @@ class MqttHandler(MqttClient):
         except Exception as e:
             logger.error(f"Erro ao processar mensagem MQTT: {e}")
 
-    def _process_database_data(self, dados, msg):
+    def _process_database_data(self, dados):
         """Processa os dados para o banco de dados"""
         if dados.get("tipo") == "usina":
             self._save_usina_data(dados)
         else:
-            self._save_client_data(dados, msg)
+            self._save_client_data(dados)
+
+    def _save_redis(self, dados, tipo):
+        try:
+            hospital = dados.get('Hospital')
+            data = dados.get('Data')
+            dados_json = json.dumps(data)
+            self.data_base.hset(tipo, key=hospital, value=dados_json)
+        except Exception as e:
+            raise Exception(f'Falha ao adcionar {tipo} ao Redis | erro: {e}')
 
     def _save_usina_data(self, dados):
         """Salva dados da usina"""
-        usina_data = dados.get("Data", {}).get("usina", {})
-        central_data = dados.get("Data", {}).get("central", {})
+        return self._save_redis(dados, 'Usina')
 
-       
-
-    def _save_client_data(self, dados, msg):
+    def _save_client_data(self, dados):
         """Salva dados do cliente"""
-        dados_hospital = dados.get("Data", {})
-    
-
+        return self._save_redis(dados, 'Central')
+        
     def _process_email_notification(self, dados):
-        """Processa notificação por email de forma assíncrona"""
+        """Processa notificação por email de forma assíncrona pra não bloquear o MQTT"""
         def send_notification():
             try:
                 HandleMail.enviar(dados)
                 logger.info(f"Email enviado para hospital: {dados.get('Hospital', 'Unknown')}")
             except Exception as e:
                 logger.error(f"Erro ao enviar email: {e}")
-        
-        # Executa em thread separada para não bloquear MQTT
+
         email_thread = threading.Thread(target=send_notification, daemon=True)
         email_thread.start()
     
