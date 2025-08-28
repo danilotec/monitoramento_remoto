@@ -52,12 +52,12 @@ class ConfigManager:
         )
     
     @staticmethod
-    def load_from_file(config_path: str = 'email_config.json') -> EmailConfig:
+    def load_from_file(settings_path: str = 'email_config.json') -> EmailConfig:
         """Carrega configurações de arquivo JSON"""
         try:
-            config_file = Path(config_path)
-            if config_file.exists():
-                with open(config_file, 'r', encoding='utf-8') as f:
+            settings_file = Path(settings_path)
+            if settings_file.exists():
+                with open(settings_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     return EmailConfig(**data)
         except Exception as e:
@@ -72,24 +72,46 @@ class HandleMail:
     MAX_RETRIES = 3
     RETRY_DELAY = 5  # segundos entre tentativas
     
-    _config: Optional[EmailConfig] = None
+    _settings: Optional[EmailConfig] = None
 
     @classmethod
-    def initialize(cls, config: Optional[EmailConfig] = None):
+    def initialize(cls, settings: Optional[EmailConfig] = None):
         """Inicializa a classe com configuração de email"""
-        if config:
-            cls._config = config
+        if settings:
+            cls._settings = settings
         else:
-            cls._config = ConfigManager.load_from_file()
+            cls._settings = ConfigManager.load_from_file()
         
         logger.info("HandleMail inicializado com configurações de email")
 
     @classmethod
-    def get_config(cls) -> EmailConfig:
+    def get_settings(cls) -> EmailConfig:
         """Obtém a configuração atual, inicializando se necessário"""
-        if cls._config is None:
+        if cls._settings is None:
             cls.initialize()
-        return cls._config #type:ignore
+        return cls._settings #type:ignore
+
+    @classmethod
+    def send(cls, data: Any) -> bool:
+        """Envia email de alerta baseado nos dados recebidos"""
+        if isinstance(data, dict):
+            try:
+                hospital_name = data.get("Hospital", "Unknown")
+                logger.info(f"Processando dados para hospital: {hospital_name}")
+                
+                if not cls._should_send_email(hospital_name):
+                    return False
+                
+                if data.get("tipo") == "usina":
+                    return cls._handle_usina_email(data)
+                else:
+                    return cls._handle_hospital_email(data)
+        
+            except Exception as e:
+                logger.error(f"Erro geral no HandleMail.enviar: {e}")
+                return False
+        else:
+            return cls._send_offline_mail(str(data))
 
     @staticmethod
     def __safe_get(value: Any, default: Any) -> Any:
@@ -102,33 +124,39 @@ class HandleMail:
             return default
 
     @classmethod
-    def __enviar_email_smtp(cls, titulo: str, corpo: str) -> bool:
+    def _send_offline_mail(cls, data: str) -> bool:
+        """Envia email para dispositivo offline"""
+        title = 'ALERTA: Conexão do Dispositivo!'
+        return cls.__send_email_sync(title, data)
+
+    @classmethod
+    def __send_email_smtp(cls, title: str, body: str) -> bool:
         """Envia email usando SMTP"""
         try:
-            config = cls.get_config()
+            settings = cls.get_settings()
             
-            if not config.username or not config.password:
+            if not settings.username or not settings.password:
                 logger.error("Credenciais de email não configuradas")
                 return False
             
             msg = MIMEMultipart()
-            msg['From'] = config.from_email or config.username
-            msg['To'] = ', '.join(config.to_emails)
-            msg['Subject'] = titulo
+            msg['From'] = settings.from_email or settings.username
+            msg['To'] = ', '.join(settings.to_emails)
+            msg['Subject'] = title
             
-            msg.attach(MIMEText(corpo, 'plain', 'utf-8'))
+            msg.attach(MIMEText(body, 'plain', 'utf-8'))
             
-            server = smtplib.SMTP(config.host, config.port, timeout=15)
+            server = smtplib.SMTP(settings.host, settings.port, timeout=15)
             
-            if config.use_tls:
+            if settings.use_tls:
                 server.starttls()
             
-            server.login(config.username, config.password)
+            server.login(settings.username, settings.password)
             text = msg.as_string()
-            server.sendmail(config.from_email or config.username, config.to_emails, text)
+            server.sendmail(settings.from_email or settings.username, settings.to_emails, text)
             server.quit()
             
-            logger.info(f"Email enviado com sucesso: {titulo}")
+            logger.info(f"Email enviado com sucesso: {title}")
             return True
             
         except Exception as e:
@@ -136,36 +164,36 @@ class HandleMail:
             return False
 
     @classmethod
-    def __enviar_email_sync(cls, titulo: str, corpo: str) -> bool:
+    def __send_email_sync(cls, title: str, body: str) -> bool:
         """Função auxiliar para envio síncrono de email com retry"""
         
-        config = cls.get_config()
+        settings = cls.get_settings()
         
-        if not config.username or not config.host:
+        if not settings.username or not settings.host:
             logger.warning("Configurações de email não encontradas")
             return False
 
-        for tentativa in range(cls.MAX_RETRIES):
+        for attempt in range(cls.MAX_RETRIES):
             try:
-                logger.info(f"Tentativa {tentativa + 1} de envio de email: {titulo}")
+                logger.info(f"Tentativa {attempt + 1} de envio de email: {title}")
                 
-                if cls.__enviar_email_smtp(titulo, corpo):
+                if cls.__send_email_smtp(title, body):
                     return True
                 
-                if tentativa < cls.MAX_RETRIES - 1:
+                if attempt < cls.MAX_RETRIES - 1:
                     logger.info(f"Aguardando {cls.RETRY_DELAY}s antes da próxima tentativa...")
                     time.sleep(cls.RETRY_DELAY)
                     
             except Exception as e:
-                logger.error(f"Erro na tentativa {tentativa + 1}: {e}")
-                if tentativa < cls.MAX_RETRIES - 1:
+                logger.error(f"Erro na tentativa {attempt + 1}: {e}")
+                if attempt < cls.MAX_RETRIES - 1:
                     time.sleep(cls.RETRY_DELAY)
         
         logger.error(f"Falha em todas as {cls.MAX_RETRIES} tentativas de envio")
         return False
 
     @classmethod
-    def __enviar_email(cls, titulo: str, corpo: str, timeout: int = 30) -> bool:
+    def __send_email(cls, title: str, body: str, timeout: int = 30) -> bool:
         """Envia email com timeout usando threading"""
         result: List[bool] = [False]
         exception_info: List[Optional[str]] = [None]
@@ -173,7 +201,7 @@ class HandleMail:
         def email_worker():
             try:
                 with cls._email_lock:
-                    result[0] = cls.__enviar_email_sync(titulo, corpo)
+                    result[0] = cls.__send_email_sync(title, body)
             except Exception as e:
                 exception_info[0] = str(e)
                 logger.error(f"Erro no worker de email: {e}")
@@ -184,7 +212,7 @@ class HandleMail:
         email_thread.join(timeout=timeout)
         
         if email_thread.is_alive():
-            logger.error(f"Timeout ao enviar email '{titulo}' após {timeout}s")
+            logger.error(f"Timeout ao enviar email '{title}' após {timeout}s")
             return False
         
         if exception_info[0]:
@@ -206,118 +234,92 @@ class HandleMail:
         logger.info(f"Email bloqueado por cooldown para {hospital_name} (últimos {(current_time - last_time):.0f}s)")
         return False
 
-    @classmethod
-    def enviar(cls, dados: Any) -> bool:
-        """Envia email de alerta baseado nos dados recebidos"""
-        if isinstance(dados, dict):
-            try:
-                hospital_name = dados.get("Hospital", "Unknown")
-                logger.info(f"Processando dados para hospital: {hospital_name}")
-                
-                if not cls._should_send_email(hospital_name):
-                    return False
-                
-                if dados.get("tipo") == "usina":
-                    return cls._handle_usina_email(dados)
-                else:
-                    return cls._handle_hospital_email(dados)
-        
-            except Exception as e:
-                logger.error(f"Erro geral no HandleMail.enviar: {e}")
-                return False
-        else:
-            return cls._send_offline_mail(str(dados))
 
     @classmethod
-    def _handle_usina_email(cls, dados: Dict[str, Any]) -> bool:
+    def _handle_usina_email(cls, data: Dict[str, Any]) -> bool:
         """Processa alertas de usina"""
-        usina = dados.get("Data", {}).get("usina", {})
-        central = dados.get("Data", {}).get("central", {})
+        psa = data.get("Data", {}).get("usina", {})
+        central = data.get("Data", {}).get("central", {})
 
-        condicoes_problemas = []
+        fault_conditions = []
         
-        purity = cls.__safe_get(usina.get("Purity"), 200)
+        purity = cls.__safe_get(psa.get("Purity"), 200)
         if purity < 90.0:
-            condicoes_problemas.append(f"Pureza baixa: {purity}%")
+            fault_conditions.append(f"Pureza baixa: {purity}%")
         
-        product_pressure = cls.__safe_get(usina.get("product_pressure"), 20)
+        product_pressure = cls.__safe_get(psa.get("product_pressure"), 20)
         if product_pressure < 5.0:
-            condicoes_problemas.append(f"Pressão do produto baixa: {product_pressure}")
+            fault_conditions.append(f"Pressão do produto baixa: {product_pressure}")
         
         pressure = cls.__safe_get(central.get("pressure"), 20)
         if pressure < 5.0:
-            condicoes_problemas.append(f"Pressão central baixa: {pressure}")
+            fault_conditions.append(f"Pressão central baixa: {pressure}")
         
         dew_point = cls.__safe_get(central.get("dew_point"), -100)
         if dew_point > -45.0:
-            condicoes_problemas.append(f"Ponto de orvalho alto: {dew_point}")
+            fault_conditions.append(f"Ponto de orvalho alto: {dew_point}")
 
-        rede = cls.__safe_get(central.get("rede"), 20)
-        if rede < 5:
-            condicoes_problemas.append(f"Pressão da rede baixa: {rede}")
+        pipeline = cls.__safe_get(central.get("rede"), 20)
+        if pipeline < 5:
+            fault_conditions.append(f"Pressão da rede baixa: {pipeline}")
         
         if cls.__safe_get(central.get("RST"), "Default") == "FALHA":
-            condicoes_problemas.append("Falha RST detectada")
+            fault_conditions.append("Falha RST detectada")
         
         if cls.__safe_get(central.get("BE"), "Default") == "FALHA":
-            condicoes_problemas.append("Botão de emergência acionado")
+            fault_conditions.append("Botão de emergência acionado")
 
-        if condicoes_problemas:
-            logger.info(f"Problemas detectados na usina {dados['Hospital']}: {condicoes_problemas}")
-            corpo = (
-                f'ALERTA: Problemas detectados na Usina {dados["Hospital"]}\n\n'
+        if fault_conditions:
+            logger.info(f"Problemas detectados na usina {data['Hospital']}: {fault_conditions}")
+            body = (
+                f'ALERTA: Problemas detectados na Usina {data["Hospital"]}\n\n'
                 f'Problemas identificados:\n' + 
-                '\n'.join(f'- {problema}' for problema in condicoes_problemas) +
-                f'\n\nDados completos da usina:\n{json.dumps(usina, indent=2, ensure_ascii=False)}\n\n'
+                '\n'.join(f'- {problema}' for problema in fault_conditions) +
+                f'\n\nDados completos da usina:\n{json.dumps(psa, indent=2, ensure_ascii=False)}\n\n'
                 f'Dados completos da central:\n{json.dumps(central, indent=2, ensure_ascii=False)}'
             )
             
-            return cls.__enviar_email(f'ALERTA Usina {dados["Hospital"]}', corpo)
+            return cls.__send_email(f'ALERTA Usina {data["Hospital"]}', body)
         
         return False
 
     @classmethod
-    def _handle_hospital_email(cls, dados: Dict[str, Any]) -> bool:
+    def _handle_hospital_email(cls, data: Dict[str, Any]) -> bool:
         """Processa alertas de hospital"""
-        hospital = dados.get("Data", {})
+        hospital = data.get("Data", {})
         
-        condicoes_problemas = []
+        fault_conditons = []
         
         pressure = cls.__safe_get(hospital.get("pressure"), 20)
         if pressure < 5:
-            condicoes_problemas.append(f"Pressão baixa: {pressure}")
+            fault_conditons.append(f"Pressão baixa: {pressure}")
         
-        rede = cls.__safe_get(hospital.get("rede"), 20)
-        if rede < 5:
-            condicoes_problemas.append(f"Pressão da rede baixa: {rede}")
+        pipeline = cls.__safe_get(hospital.get("rede"), 20)
+        if pipeline < 5:
+            fault_conditons.append(f"Pressão da rede baixa: {pipeline}")
         
         dew_point = cls.__safe_get(hospital.get("dew_point"), -100)
         if dew_point > -45.0:
-            condicoes_problemas.append(f"Ponto de orvalho alto: {dew_point}")
+            fault_conditons.append(f"Ponto de orvalho alto: {dew_point}")
         
         if cls.__safe_get(hospital.get("RST"), "Default") == "FALHA":
-            condicoes_problemas.append("Falha RST detectada")
+            fault_conditons.append("Falha RST detectada")
         
         if cls.__safe_get(hospital.get("BE"), "Default") == "FALHA":
-            condicoes_problemas.append("Botão de emergência acionado")
+            fault_conditons.append("Botão de emergência acionado")
 
-        if condicoes_problemas:
-            logger.info(f"Problemas detectados no hospital {dados['Hospital']}: {condicoes_problemas}")
-            corpo = (
-                f'ALERTA: Problemas detectados no Hospital {dados["Hospital"]}\n\n'
+        if fault_conditons:
+            logger.info(f"Problemas detectados no hospital {data['Hospital']}: {fault_conditons}")
+            body = (
+                f'ALERTA: Problemas detectados no Hospital {data["Hospital"]}\n\n'
                 f'Problemas identificados:\n' + 
-                '\n'.join(f'- {problema}' for problema in condicoes_problemas) +
+                '\n'.join(f'- {problema}' for problema in fault_conditons) +
                 f'\n\nDados completos:\n{json.dumps(hospital, indent=2, ensure_ascii=False)}'
             )
             
-            return cls.__enviar_email(f'ALERTA Hospital {dados["Hospital"]}', corpo)
+            return cls.__send_email(f'ALERTA Hospital {data["Hospital"]}', body)
         else:
-            logger.info(f"Nenhum problema detectado no hospital {dados['Hospital']}")
+            logger.info(f"Nenhum problema detectado no hospital {data['Hospital']}")
         
         return False
     
-    @classmethod
-    def _send_offline_mail(cls, dados: str) -> bool:
-        """Envia email para dispositivo offline"""
-        titulo = 'ALERTA: Conexão do Dispositivo!'
-        return cls.__enviar_email_sync(titulo, dados)

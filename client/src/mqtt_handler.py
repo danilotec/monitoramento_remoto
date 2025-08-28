@@ -29,45 +29,45 @@ class MqttHandler(MqttClient):
             if msg.topic == "desconnection/topic":
                 self._process_email_notification(msg.payload.decode())
             else:
-                dados = json.loads(msg.payload.decode())
-                self._process_database_data(dados)
-                self._process_email_notification(dados)
+                data = json.loads(msg.payload.decode())
+                self._process_database_data(data)
+                self._process_email_notification(data)
             
         except json.JSONDecodeError as e:
             logger.error(f"Erro ao decodificar JSON: {e}")
         except Exception as e:
             logger.error(f"Erro ao processar mensagem MQTT: {e}")
 
-    def _process_database_data(self, dados):
+    def _process_database_data(self, data_clients):
         """Processa os dados para o banco de dados"""
-        if dados.get("tipo") == "usina":
-            self._save_usina_data(dados)
+        if data_clients.get("tipo") == "usina":
+            self._save_usina_data(data_clients)
         else:
-            self._save_client_data(dados)
+            self._save_client_data(data_clients)
 
-    def _save_redis(self, dados, tipo):
+    def _save_redis(self, data_clients, type):
         try:
-            hospital = dados.get('Hospital')
-            data = dados.get('Data')
-            dados_json = json.dumps(data)
-            self.data_base.hset(tipo, key=hospital, value=dados_json)
+            hospital = data_clients.get('Hospital')
+            data = data_clients.get('Data')
+            data_json = json.dumps(data)
+            self.data_base.hset(type, key=hospital, value=data_json)
         except Exception as e:
-            raise Exception(f'Falha ao adcionar {tipo} ao Redis | erro: {e}')
+            raise Exception(f'Falha ao adcionar {type} ao Redis | erro: {e}')
 
-    def _save_usina_data(self, dados):
+    def _save_usina_data(self, data):
         """Salva dados da usina"""
-        return self._save_redis(dados, 'Usina')
+        return self._save_redis(data, 'Usina')
 
-    def _save_client_data(self, dados):
+    def _save_client_data(self, data):
         """Salva dados do cliente"""
-        return self._save_redis(dados, 'Central')
+        return self._save_redis(data, 'Central')
         
-    def _process_email_notification(self, dados):
+    def _process_email_notification(self, data):
         """Processa notificação por email de forma assíncrona pra não bloquear o MQTT"""
         def send_notification():
             try:
-                HandleMail.enviar(dados)
-                logger.info(f"Email enviado para hospital: {dados.get('Hospital', 'Unknown')}")
+                HandleMail.send(data)
+                logger.info(f"Email enviado para hospital: {data.get('Hospital', 'Unknown')}")
             except Exception as e:
                 logger.error(f"Erro ao enviar email: {e}")
 
