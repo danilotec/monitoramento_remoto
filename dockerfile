@@ -1,25 +1,13 @@
 FROM python:3.11-slim
 
-# Instalar dependências do sistema
-RUN apt-get update && apt-get install -y \
-    postgresql-client \
-    libpq-dev \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
 
-WORKDIR /novo sistema
+COPY requirements.txt /app/
 
-COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
-
-COPY wait_for_db.py .
-RUN chmod +x wait_for_db.py
-
-COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
+COPY . /app/
 
 EXPOSE 8000
 
-ENTRYPOINT ["./entrypoint.sh"]
+CMD ["sh", "-c", "python backend/manage.py migrate && python backend/manage.py runserver 0.0.0.0:8000"]
