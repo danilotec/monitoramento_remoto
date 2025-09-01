@@ -25,18 +25,20 @@ SECRET_KEY = 'django-insecure-_lzwcqo0@$*3ielz-mktmd6lq7jhfa5cd%8s*3&qtfo=&w4_h_
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'dashboard',
 ]
 
 MIDDLEWARE = [
@@ -98,7 +100,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
+AUTH_USER_MODEL = 'dashboard.CustomUser'
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
@@ -120,3 +122,66 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+JAZZMIN_SETTINGS = {
+    # title of the window (Will default to current_admin_site.site_title if absent or None)
+    'site_title': 'Monitoramento de Centrais',
+
+    # Title on the login screen (19 chars max) (defaults to current_admin_site.site_header if absent or None)
+    'site_header': 'MDC',
+
+    # Title on the brand (19 chars max) (defaults to current_admin_site.site_header if absent or None)
+    'site_brand': 'MDC',
+
+    'icons': {
+        'auth': 'fas fa-users-cog',
+        'auth.Group': 'fas fa-users',
+        'dashboard.CustomUser': 'fas fa-user',
+        'dashboard.Hospital': 'fa-solid fa-hospital',
+    },
+
+    # Welcome text on the login screen
+    'welcome_sign': 'Bem-vindo(a) ao Monitoramento de Centrais',
+
+    # Copyright on the footer
+    'copyright': 'OmniSistems LTDA',
+
+    # List of model admins to search from the search bar, search bar omitted if excluded
+    # If you want to use a single search field you dont need to use a list, you can use a simple string 
+    'search_model': ['dashboard.Hospital','dashboard.CustomUser',],
+
+    # Whether to show the UI customizer on the sidebar
+    'show_ui_builder': False,
+}
+
+JAZZMIN_UI_TWEAKS = {
+    'navbar_small_text': False,
+    'footer_small_text': False,
+    'body_small_text': False,
+    'brand_small_text': False,
+    'brand_colour': False,
+    'accent': 'accent-primary',
+    'navbar': 'navbar-white navbar-light',
+    'no_navbar_border': False,
+    'navbar_fixed': False,
+    'layout_boxed': False,
+    'footer_fixed': False,
+    'sidebar_fixed': False,
+    'sidebar': 'sidebar-dark-primary',
+    'sidebar_nav_small_text': False,
+    'sidebar_disable_expand': False,
+    'sidebar_nav_child_indent': False,
+    'sidebar_nav_compact_style': False,
+    'sidebar_nav_legacy_style': False,
+    'sidebar_nav_flat_style': False,
+    'theme': 'minty',
+    'dark_mode_theme': None,
+    'button_classes': {
+        'primary': 'btn-outline-primary',
+        'secondary': 'btn-outline-secondary',
+        'info': 'btn-info',
+        'warning': 'btn-warning',
+        'danger': 'btn-danger',
+        'success': 'btn-success'
+    }
+}

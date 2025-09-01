@@ -1,0 +1,145 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard MQTT - Usina de Oxigênio</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-industry"></i> Dashboard da Usina de Oxigênio</h1>
+            <h2>Bem-vindo, {{ request.user.username }}</h2>
+            <a class="btn refresh-btn" href="{% url 'logout' %}">Sair</a>
+            <div class="refresh-container">
+                <button id="refresh-btn" class="btn refresh-btn"><i class="fas fa-sync-alt"></i> Atualizar</button>
+                <span id="last-update" class="last-update">Última atualização: {{ oxygen_details.updated_at }}</span>
+            </div>
+        </header>
+        
+        <main>
+            <section class="dashboard-grid">
+                
+                <div class="hospital-card main-info-card">
+                    <h2 id="hospital-name">{{ hospital }}</h2>
+                    <div class="hospital-details">
+                        <div class="status-icon">
+                            <i class="fas fa-industry"></i>
+                        </div>
+                        <div class="mode-badge" id="mode-badge">{{ oxygen_details.auto }}</div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3><i class="fas fa-plug"></i> Compressor 1</h3>
+                    <div class="status">
+                        <span class="status-text">{{ oxygen_details.C1 }}</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3><i class="fas fa-plug"></i> Compressor 2</h3>
+                    <div class="status">
+                        <span class="status-text">{{ oxygen_details.C2 }}</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3><i class="fas fa-bolt"></i> Botão de Emergência</h3>
+                    <div class="status">
+                        <span class="status-text">{{ oxygen_details.BE }}</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3><i class="fas fa-redo"></i> Falta de Fase</h3>
+                    <div class="status">
+                        <span class="status-text">{{ oxygen_details.RST }}</span>
+                    </div>
+                </div>
+
+                <div class="card gauge-card">
+                    <h3><i class="fas fa-percent"></i> Pureza</h3>
+                    <div class="gauge">
+                        <div class="gauge-value">{{ oxygen_details.purity }}</div>
+                        <div class="gauge-label">%</div>
+                    </div>
+                </div>
+
+                <div class="card gauge-card">
+                    <h3><i class="fas fa-tachometer-alt"></i> Pressão do Produto</h3>
+                    <div class="gauge">
+                        <div class="gauge-value">{{ oxygen_details.product_pressure }}</div>
+                        <div class="gauge-label">Bar</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3><i class="fas fa-hourglass-half"></i> Horas PSA</h3>
+                    <div class="status">
+                        <span class="status-text">{{ oxygen_details.psa_hour_counter }} Horas</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3><i class="fas fa-columns"></i> Colunas</h3>
+                    <div class="status-text">Coluna 1.1 -> {{ oxygen_details.column_1_1 }} bar</div>
+                    <div class="status-text">Coluna 1.2 -> {{ oxygen_details.column_1_2 }} bar</div>
+                    <div class="status-text">Coluna 2.1 -> {{ oxygen_details.column_2_1 }} bar</div>
+                    <div class="status-text">Coluna 2.2 -> {{ oxygen_details.column_2_2 }} bar</div>
+                </div>
+
+
+                <div class="card gauge-card">
+                    <h3><i class="fa fa-life-ring"></i> Pressão da Rede</h3>
+                    <div class="gauge">
+                        <div class="gauge-value">{{ oxygen_details.rede }}</div>
+                        <div class="gauge-label">Bar</div>
+                    </div>
+                </div>
+
+                <div class="card gauge-card">
+                    <h3><i class="fas fa-compress-alt"></i> Pressão da Central</h3>
+                    <div class="gauge">
+                        <div class="gauge-value">{{ oxygen_details.pressure }}</div>
+                        <div class="gauge-label">Bar</div>
+                    </div>
+                </div>
+
+                <div class="card gauge-card">
+                    <h3><i class="fas fa-tint"></i> Ponto de Orvalho</h3>
+                    <div class="gauge">
+                        <div class="gauge-value">{{ oxygen_details.dew_point }}</div>
+                        <div class="gauge-label">°C</div>
+                    </div>
+                </div>
+
+                <div class="card gauge-card">
+                    <h3><i class="fas fa-wind"></i> Vácuo</h3>
+                    <div class="gauge">
+                        <div class="gauge-value">{{ oxygen_details.vacuo }}</div>
+                        <div class="gauge-label">mmHg</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div> 
+
+    <footer>
+        <p>&copy; 2025 OmniSistems Monitoramento</p>
+    </footer>
+
+    <script>
+        setInterval(function() {
+            location.reload();
+        }, 5000);
+
+        document.getElementById("refresh-btn").addEventListener("click", function() {
+            location.reload();
+        });
+    </script>
+</body>
+</html>

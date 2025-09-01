@@ -4,6 +4,7 @@ from .email_handler import HandleMail
 import redis
 import threading
 import logging
+from .django_handler import sync_hospital
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,11 @@ class MqttHandler(MqttClient):
             hospital = data_clients.get('Hospital')
             data = data_clients.get('Data')
             data_json = json.dumps(data)
+
             self.data_base.hset(type, key=hospital, value=data_json)
+
+            sync_hospital(hospital)
+
         except Exception as e:
             raise Exception(f'Falha ao adcionar {type} ao Redis | erro: {e}')
 
