@@ -15,7 +15,7 @@ def custom_login(request):
 
         if user is not None:
             login(request, user)
-            return redirect('dashboard')
+            return redirect('admin_dashboard')
         else:
             return render(request, 'login.html', {'error': 'Usuário ou senha inválidos'})
 
@@ -25,10 +25,47 @@ def custom_logout(request):
     logout(request)
     return redirect('login')
 
+@login_required
+def admin_dashboard(request):
+    hospital = request.user.hospital
+    print(hospital)
+    # 🚫 Restrição: só quem tem hospital = CRADMIN acessa
+    if not hasattr(request.user, "hospital") or hospital.nome != "CRADMIN":
+        return redirect("dashboard")  # ou renderiza um 403.html se preferir
+
+    hospitals = []
+
+    # 🔍 Busca todos os hospitais no hash "Central"
+    central_data = r.hgetall("Central")
+    if central_data:
+        for hospital_nome, dados in central_data.items(): #type: ignore
+            try:
+                hospital_details = json.loads(dados)  # dict
+                hospital_details["hospital"] = hospital_nome
+                hospitals.append(hospital_details)
+            except Exception as e:
+                print(f"Erro ao processar hospital {hospital_nome}: {e}")
+
+    # 🔍 Busca todos os hospitais no hash "Usina"
+    usina_data = r.hgetall("Usina")
+    if usina_data:
+        for hospital_nome, dados in usina_data.items(): #type: ignore
+            try:
+                oxygen_details = json.loads(dados)  # dict
+                oxygen_details["hospital"] = hospital_nome
+                hospitals.append(oxygen_details)
+            except Exception as e:
+                print(f"Erro ao processar hospital {hospital_nome}: {e}")
+
+    context = {
+        "hospitals": hospitals
+    }
+    return render(request, "admin_dashboard.html", context)
 
 @login_required
 def dashboard(request):
     hospital = request.user.hospital
+    print(hospital)
     # 🔍 Tenta buscar no Redis como AirCentral
     data = r.hget("Central", hospital.nome)
     if data:
@@ -55,3 +92,4 @@ def dashboard(request):
         'error': 'Detalhes do hospital não encontrados no Redis'
     }
     return render(request, 'hospital_404.html', context)
+

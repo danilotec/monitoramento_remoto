@@ -16,3 +16,4 @@ from dashboard.models import Hospital
 def sync_hospital(nome):
     # Garante que o hospital existe (cria se não existir)
     Hospital.objects.get_or_create(nome=nome)
+    Hospital.objects.get_or_create(nome='CRADMIN')

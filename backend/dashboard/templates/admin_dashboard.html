@@ -1,0 +1,66 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Dashboard MQTT - Monitoramento Hospitalar</title>
+        <link rel="stylesheet" href="{% static 'style.css' %}">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    </head>
+    <body>
+        <div class="container">
+            <header>
+                <h1><i class="fas fa-hospital"></i> Dashboard de Monitoramento Hospitalar</h1>
+                <h2>Bem-vindo, {{ request.user.username }}</h2>
+                <a class="btn refresh-btn" href="{% url 'logout' %}">Sair</a>
+            <div class="refresh-container">
+        </div>
+        </header>
+        <main>
+            <table>
+                <tr>
+                    <th>Hospital</th>
+                    <th>P. Central</th>
+                    <th>P. Rede</th>
+                    <th>Ponto de Orvalho</th>
+                    <th>Compressor 1</th>
+                    <th>Compressor 2</th>
+                    <th>B. Emergência</th>
+                    <th>Falta de Fase</th>
+                </tr>
+                {% for data in hospitals %}
+                <tr>
+                    <td>{{ data.hospital }}</td>
+                    <td>{{ data.pressure }}</td>
+                    <td>{{ data.rede }}</td>
+                    <td>{{ data.dew_point }}</td>
+                    <td>{{ data.C1 }}</td>
+                    <td>{{ data.C2 }}</td>
+                    <td>{{ data.BE }}</td>
+                    <td>{{ data.RST }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3">Nenhum usuário encontrado.</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </main>
+    </div> 
+
+    <footer>
+        <p>&copy; 2025 OmniSistems Monitoramento</p>
+    </footer>
+    <script>
+    setInterval(function() {
+        location.reload();
+    }, 5000);
+
+    document.getElementById("refresh-btn").addEventListener("click", function() {
+        location.reload();
+    });
+</script>
+
+</body>
+</html>
