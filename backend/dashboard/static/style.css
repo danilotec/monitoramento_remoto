@@ -327,6 +327,7 @@ pre {
 .refresh-btn {
     background-color: var(--primary);
     color: white;
+    text-decoration: none;
 }
 
 .refresh-btn:hover {
