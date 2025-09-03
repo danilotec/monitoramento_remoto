@@ -28,25 +28,22 @@ def custom_logout(request):
 @login_required
 def admin_dashboard(request):
     hospital = request.user.hospital
-    print(hospital)
-    # 🚫 Restrição: só quem tem hospital = CRADMIN acessa
+
     if not hasattr(request.user, "hospital") or hospital.nome != "CRADMIN":
-        return redirect("dashboard")  # ou renderiza um 403.html se preferir
+        return redirect("dashboard") 
 
     hospitals = []
 
-    # 🔍 Busca todos os hospitais no hash "Central"
     central_data = r.hgetall("Central")
     if central_data:
         for hospital_nome, dados in central_data.items(): #type: ignore
             try:
-                hospital_details = json.loads(dados)  # dict
+                hospital_details = json.loads(dados)  
                 hospital_details["hospital"] = hospital_nome
                 hospitals.append(hospital_details)
             except Exception as e:
                 print(f"Erro ao processar hospital {hospital_nome}: {e}")
 
-    # 🔍 Busca todos os hospitais no hash "Usina"
     usina_data = r.hgetall("Usina")
     if usina_data:
         for hospital_nome, dados in usina_data.items(): #type: ignore
@@ -66,7 +63,7 @@ def admin_dashboard(request):
 def dashboard(request):
     hospital = request.user.hospital
     print(hospital)
-    # 🔍 Tenta buscar no Redis como AirCentral
+
     data = r.hget("Central", hospital.nome)
     if data:
         hospital_details = json.loads(data) #type: ignore
@@ -76,7 +73,6 @@ def dashboard(request):
         }
         return render(request, 'dashboard_central.html', context)
 
-    # 🔍 Se não achou, tenta como OxygenCentral
     data = r.hget("Usina", hospital.nome)
     if data:
         oxygen_details = json.loads(data) #type: ignore
@@ -86,7 +82,6 @@ def dashboard(request):
         }
         return render(request, 'dashboard_oxygenerator.html', context)
 
-    # ❌ Se não achar em nenhum lugar
     context = {
         'hospital': hospital,
         'error': 'Detalhes do hospital não encontrados no Redis'
