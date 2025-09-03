@@ -31,14 +31,14 @@
                 </tr>
                 {% for data in hospitals %}
                 <tr>
-                    <td>{{ data.hospital }}</td>
-                    <td>{{ data.pressure }}</td>
-                    <td>{{ data.rede }}</td>
-                    <td>{{ data.dew_point }}</td>
-                    <td>{{ data.C1 }}</td>
-                    <td>{{ data.C2 }}</td>
-                    <td>{{ data.BE }}</td>
-                    <td>{{ data.RST }}</td>
+                    <td data-label="Hospital">{{ data.hospital }}</td>
+                    <td data-label="P. Central">{{ data.pressure }}</td>
+                    <td data-label="P. Rede">{{ data.rede }}</td>
+                    <td data-label="Ponto de Orvalho">{{ data.dew_point }}</td>
+                    <td data-label="Compressor 1">{{ data.C1 }}</td>
+                    <td data-label="Compressor 2">{{ data.C2 }}</td>
+                    <td data-label="B. Emergência">{{ data.BE }}</td>
+                    <td data-label="Falta de Fase">{{ data.RST }}</td>
                 </tr>
                 {% empty %}
                 <tr>
