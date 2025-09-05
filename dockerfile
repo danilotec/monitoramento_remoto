@@ -1,13 +1,26 @@
 FROM python:3.11-slim
 
+# definir diretório de trabalho
 WORKDIR /app
 
-COPY requirements.txt /app/
+# instalar dependências do sistema
+RUN apt-get update && apt-get install -y \
+    gcc libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
+# instalar dependências python
+COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
+# copiar o restante do código
 COPY . /app/
 
+# copiar script de inicialização
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# expor a porta do gunicorn/django
 EXPOSE 8000
 
-CMD ["sh", "-c", "python backend/manage.py migrate && python backend/manage.py && python manage.py collectstatic --noinput && gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 monitoramento.wsgi:application"]
+# comando de inicialização
+CMD ["sh", "/app/start.sh"]
