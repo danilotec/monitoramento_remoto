@@ -12,7 +12,16 @@ def run_mqtt():
     password = str(os.getenv('PASSWORD_BROKER'))
     topics = str(os.getenv('TOPICS'))
    
+    redis_host = 'localhost'
+    redis_port = 6379
+    redis_db = 0
+    redis_password = None
+    
     client = MqttHandler(broker, port, user, password, topics)
+    client.set_redis_connection(host=redis_host,
+                                port=redis_port,
+                                db=redis_db,
+                                password=redis_password)
     client.run_mqtt_client()
 
 

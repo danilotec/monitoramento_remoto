@@ -9,10 +9,24 @@ from .django_handler import sync_hospital
 logger = logging.getLogger(__name__)
 
 class MqttHandler(MqttClient):
+    redis_host: str = ''
+    redis_port: int = 6379
+    redis_db: int = 0
+    redis_password: str | None = None
+
     def __init__(self, broker: str, port: int, username: str, password: str, topic: str) -> None:
         super().__init__(broker, port, username, password, topic)
-        self.data_base = redis.Redis(decode_responses=True)
+        
     
+    def set_redis_connection(self, host: str, port: int, db: int, password: str | None = None) -> None:
+        self.redis_host = host
+        self.redis_port = port
+        self.redis_db = db
+        self.redis_password = password
+        
+        self.data_base = redis.Redis(host=self.redis_host, port=self.redis_port,
+                                     db=self.redis_db, password=self.redis_password, decode_responses=True)
+
     def on_connect(self, client, userdata, flags, rc) -> None:
         if rc == 0:
             client.subscribe(self.topic)
