@@ -3,8 +3,14 @@ import json
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+import os
+from dotenv import load_dotenv
 
-r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+load_dotenv()
+
+redis_host = os.getenv('REDIS_HOST', 'localhost')
+redis_password = os.getenv('REDIS_PASSWORD')
+r = redis.Redis(host=redis_host, port=6379, db=0, password=redis_password, decode_responses=True)
 
 def custom_login(request):
     if request.method == 'POST':
