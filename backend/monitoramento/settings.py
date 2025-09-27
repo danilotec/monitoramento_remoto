@@ -29,7 +29,9 @@ SECRET_KEY = os.getenv('DJANGO_KEY','django-insecure-_lzwcqo0@$*3ielz-mktmd6lq7j
 DEBUG = os.getenv('DEBUG', True)
 
 ALLOWED_HOSTS = ['*']
-
+CSRF_TRUSTED_ORIGINS = [
+    "https://crmonitoramento.omnisistems.com.br",
+    ]
 
 # Application definition
 
