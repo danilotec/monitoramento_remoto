@@ -3,6 +3,9 @@ import json
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+
+
 import os
 from dotenv import load_dotenv
 
@@ -94,3 +97,10 @@ def dashboard(request):
     }
     return render(request, 'hospital_404.html', context)
 
+@login_required
+def hospital_data(request):
+    hospital = request.user.hospital
+    data = r.hget("Central", hospital.nome)
+    if not data:
+        return JsonResponse({'error': 'Sem dados'}, status=404)
+    return JsonResponse(json.loads(data)) #type: ignore
