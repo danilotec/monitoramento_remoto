@@ -7,6 +7,7 @@
         <title>Dashboard MQTT - Monitoramento Hospitalar</title>
         <link rel="stylesheet" href="{% static 'style.css' %}">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     </head>
     <body>
         <div class="container">
@@ -14,98 +15,213 @@
                 <h1><i class="fas fa-hospital"></i> Dashboard de Monitoramento Hospitalar</h1>
                 <h2>Bem-vindo, {{ request.user.username }}</h2>
                 <a class="btn refresh-btn" href="{% url 'logout' %}">Sair</a>
-            <div class="refresh-container">
-                <!-- <button id="refresh-btn" class="btn refresh-btn"><i class="fas fa-sync-alt"></i> Atualizar</button> -->
-                <!-- <span id="last-update" class="last-update">Última atualização: {{ hospital_details.updated_at }}</span> -->
-            </div>
-        </header>
-        <main>
-            <section class="dashboard-grid">
-                <div class="hospital-card main-info-card">
-                    <h2 id="hospital-name">{{ hospital }}</h2>
-                    <div class="hospital-details">
-                        <div class="status-icon">
-                            <i class="fas fa-building-circle-check"></i>
+            </header>
+            
+            <main>
+                <!-- Área Principal com Gauges -->
+                <section class="dashboard-grid">
+                    <!-- Card do Hospital -->
+                    <div class="hospital-card main-info-card">
+                        <h2 id="hospital-name"><i class="fas fa-building-circle-check"></i> {{ hospital }}</h2>
+                        <div class="hospital-details">
+                            <div class="status-icon">
+                                <i class="fas fa-heartbeat"></i>
+                            </div>
+                            {% if hospital_details.auto %}
+                            <div class="mode-badge" id="mode-badge">{{ hospital_details.auto }}</div>
+                            {% endif %}
                         </div>
-                        <div class="mode-badge" id="mode-badge">{{ hospital_details.auto }}</div>
                     </div>
-                </div>
 
-                <div class="card">
-                    <h3><i class="fas fa-plug"></i> Compressor 1</h3>
-                    <div class="status" id="c1-status">
-                        <span class="status-text">{{ hospital_details.C1 }}</span>
+                    <!-- Container dos Gauges -->
+                    <div class="gauge-container">
+                        {% if hospital_details.rede %}
+                        <div class="gauge-card">
+                            <h3><i class="fa fa-life-ring"></i> Pressão da Rede</h3>
+                            <canvas id="rede-gauge" width="250" height="250"></canvas>
+                            <div class="gauge-label">Bar</div>
+                        </div>
+                        {% endif %}
+
+                        {% if hospital_details.pressure %}
+                        <div class="gauge-card">
+                            <h3><i class="fas fa-compress-alt"></i> Pressão da Central</h3>
+                            <canvas id="pressure-gauge" width="250" height="250"></canvas>
+                            <div class="gauge-label">Bar</div>
+                        </div>
+                        {% endif %}
+
+                        {% if hospital_details.dew_point %}
+                        <div class="gauge-card">
+                            <h3><i class="fas fa-tint"></i> Ponto de Orvalho</h3>
+                            <canvas id="dew-gauge" width="250" height="250"></canvas>
+                            <div class="gauge-label">°C</div>
+                        </div>
+                        {% endif %}
+
+                        {% if hospital_details.vacuo %}
+                        <div class="gauge-card">
+                            <h3><i class="fas fa-wind"></i> Vácuo</h3>
+                            <canvas id="vacuo-gauge" width="250" height="250"></canvas>
+                            <div class="gauge-label">mmHg</div>
+                        </div>
+                        {% endif %}
                     </div>
-                </div>
+                </section>
 
-                <div class="card">
-                    <h3><i class="fas fa-plug"></i> Compressor 2</h3>
-                    <div class="status" id="c2-status">
-                        <span class="status-text">{{ hospital_details.C2 }}</span>
+                <!-- Sidebar com Status -->
+                <aside class="status-sidebar">
+                    <h3><i class="fas fa-list-check"></i> Status do Sistema</h3>
+                    
+                    {% if hospital_details.C1 %}
+                    <div class="card">
+                        <h3><i class="fas fa-plug"></i> Compressor 1</h3>
+                        <div class="status" id="c1-status">
+                            <span class="status-text">{{ hospital_details.C1 }}</span>
+                        </div>
                     </div>
-                </div>
+                    {% endif %}
 
-                <div class="card">
-                    <h3><i class="fas fa-bolt"></i> Botão de Emergência</h3>
-                    <div class="status" id="be-status">
-                        <span class="status-text">{{ hospital_details.BE }}</span>
+                    {% if hospital_details.C2 %}
+                    <div class="card">
+                        <h3><i class="fas fa-plug"></i> Compressor 2</h3>
+                        <div class="status" id="c2-status">
+                            <span class="status-text">{{ hospital_details.C2 }}</span>
+                        </div>
                     </div>
-                </div>
+                    {% endif %}
 
-                <div class="card">
-                    <h3><i class="fas fa-redo"></i> Falta de Fase</h3>
-                    <div class="status" id="rst-status">
-                        <span class="status-text">{{ hospital_details.RST }}</span>
+                    {% if hospital_details.BE %}
+                    <div class="card">
+                        <h3><i class="fas fa-bolt"></i> Botão de Emergência</h3>
+                        <div class="status" id="be-status">
+                            <span class="status-text">{{ hospital_details.BE }}</span>
+                        </div>
                     </div>
-                </div>
+                    {% endif %}
 
-                <div class="card gauge-card">
-                    <h3><i class="fa fa-life-ring"></i> Pressão da Rede</h3>
-                    <div class="gauge" id="rede-gauge">
-                        <div class="gauge-value">{{ hospital_details.rede }}</div>
-                        <div class="gauge-label">Bar</div>
+                    {% if hospital_details.RST %}
+                    <div class="card">
+                        <h3><i class="fas fa-redo"></i> Falta de Fase</h3>
+                        <div class="status" id="rst-status">
+                            <span class="status-text">{{ hospital_details.RST }}</span>
+                        </div>
                     </div>
-                </div>
+                    {% endif %}
+                </aside>
+            </main>
+        </div> 
 
-                <div class="card gauge-card">
-                    <h3><i class="fas fa-compress-alt"></i> Pressão da Central</h3>
-                    <div class="gauge" id="pressure-gauge">
-                        <div class="gauge-value">{{ hospital_details.pressure }}</div>
-                        <div class="gauge-label">Bar</div>
-                    </div>
-                </div>
+        <footer>
+            <p>&copy; 2025 OmniSistems Monitoramento</p>
+        </footer>
+        
+        <script>
+            // Atualização automática a cada 5 segundos
+            setInterval(function() {
+                location.reload();
+            }, 5000);
 
-                <div class="card gauge-card">
-                    <h3><i class="fas fa-tint"></i> Ponto de Orvalho</h3>
-                    <div class="gauge" id="dew-gauge">
-                        <div class="gauge-value">{{ hospital_details.dew_point }}</div>
-                        <div class="gauge-label">°C</div>
-                    </div>
-                </div>
+            // Função para criar gauge usando Chart.js
+            function createGauge(canvasId, value, maxValue, minValue, unit, colorRanges) {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
 
-                <div class="card gauge-card">
-                    <h3><i class="fas fa-wind"></i> Vácuo</h3>
-                    <div class="gauge" id="vacuo-gauge">
-                        <div class="gauge-value">{{ hospital_details.vacuo }}</div>
-                        <div class="gauge-label">mmHg</div>
-                    </div>
-                </div>
-            </section>
-        </main>
-    </div> 
+                const ctx = canvas.getContext('2d');
+                
+                // Configuração do gauge
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        datasets: [{
+                            data: [value - minValue, maxValue - value],
+                            backgroundColor: [
+                                getColorForValue(value, colorRanges),
+                                '#e0e0e0'
+                            ],
+                            borderWidth: 0,
+                            circumference: 180,
+                            rotation: 270
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        cutout: '70%',
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                enabled: false
+                            }
+                        }
+                    },
+                    plugins: [{
+                        id: 'gaugeText',
+                        afterDraw: (chart) => {
+                            const ctx = chart.ctx;
+                            const centerX = chart.chartArea.left + (chart.chartArea.right - chart.chartArea.left) / 2;
+                            const centerY = chart.chartArea.top + (chart.chartArea.bottom - chart.chartArea.top) / 2;
+                            
+                            ctx.save();
+                            ctx.font = 'bold 32px Arial';
+                            ctx.fillStyle = '#333';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(value.toFixed(1), centerX, centerY);
+                            
+                            ctx.font = '14px Arial';
+                            ctx.fillStyle = '#666';
+                            ctx.fillText(unit, centerX, centerY + 25);
+                            ctx.restore();
+                        }
+                    }]
+                });
+            }
 
-    <footer>
-        <p>&copy; 2025 OmniSistems Monitoramento</p>
-    </footer>
-    <script>
-    setInterval(function() {
-        location.reload();
-    }, 5000);
+            // Função para determinar cor baseada no valor
+            function getColorForValue(value, ranges) {
+                for (let range of ranges) {
+                    if (value >= range.min && value <= range.max) {
+                        return range.color;
+                    }
+                }
+                return '#999';
+            }
 
-    document.getElementById("refresh-btn").addEventListener("click", function() {
-        location.reload();
-    });
-</script>
+            // Criar gauges para cada variável (somente se existir)
+            {% if hospital_details.rede %}
+            createGauge('rede-gauge', parseFloat('{{ hospital_details.rede }}'), 12, 0, 'Bar', [
+                { min: 0, max: 5, color: '#ff4444' },
+                { min: 5, max: 8, color: '#ffaa00' },
+                { min: 8, max: 12, color: '#00cc44' }
+            ]);
+            {% endif %}
 
-</body>
+            {% if hospital_details.pressure %}
+            createGauge('pressure-gauge', parseFloat('{{ hospital_details.pressure }}'), 12, 0, 'Bar', [
+                { min: 0, max: 5, color: '#ff4444' },
+                { min: 5, max: 8, color: '#ffaa00' },
+                { min: 8, max: 12, color: '#00cc44' }
+            ]);
+            {% endif %}
+
+            {% if hospital_details.dew_point %}
+            createGauge('dew-gauge', parseFloat('{{ hospital_details.dew_point }}'), 10, -70, '°C', [
+                { min: -70, max: -30, color: '#00cc44' },
+                { min: -30, max: -10, color: '#ffaa00' },
+                { min: -10, max: 10, color: '#ff4444' }
+            ]);
+            {% endif %}
+
+            {% if hospital_details.vacuo %}
+            createGauge('vacuo-gauge', parseFloat('{{ hospital_details.vacuo }}'), 760, 0, 'mmHg', [
+                { min: 0, max: 300, color: '#ff4444' },
+                { min: 300, max: 500, color: '#ffaa00' },
+                { min: 500, max: 760, color: '#00cc44' }
+            ]);
+            {% endif %}
+        </script>
+    </body>
 </html>
