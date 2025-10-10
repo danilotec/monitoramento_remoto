@@ -1,6 +1,6 @@
-    const gauges = {}; // guarda as instâncias dos gráficos Chart.js
+    const gauges = {};
 
-    // Função para criar ou atualizar gauge
+
     function createOrUpdateGauge(canvasId, value, maxValue, minValue, unit, colorRanges) {
         const canvas = document.getElementById(canvasId);
         if (!canvas) {
@@ -20,7 +20,6 @@
         const filledValue = currentValue - minValue;
         const emptyValue = maxValue - currentValue;
 
-        // Se já existe, apenas atualiza
         if (gauges[canvasId]) {
             const chart = gauges[canvasId];
             chart.data.datasets[0].data = [filledValue, emptyValue];
@@ -30,7 +29,6 @@
             return;
         }
 
-        // Criação do novo gauge
         gauges[canvasId] = new Chart(ctx, {
             type: 'doughnut',
             data: {
@@ -61,7 +59,7 @@
                     const ctx = chart.ctx;
                     const {left, right, top, bottom} = chart.chartArea;
                     const centerX = left + (right - left) / 2;
-                    const centerY = top + (bottom - top) / 1.1; // ajusta posição do texto
+                    const centerY = top + (bottom - top) / 1.1; 
 
                     const value = chart.options.plugins.gaugeText.value;
                     const unit = chart.options.plugins.gaugeText.unit;
@@ -82,7 +80,6 @@
         });
     }
 
-    // Função de cor dinâmica
     function getColorForValue(value, ranges) {
         for (let range of ranges) {
             if (value >= range.min && value <= range.max) return range.color;
@@ -90,12 +87,10 @@
         return '#999';
     }
 
-    // Atualiza os dados periodicamente
     async function updateData() {
         try {
             const response = await fetch(HOSPITAL_DATA_URL);
             const data = await response.json();
-            console.log("Dados atualizados:", data);
 
             if (data.pressure !== undefined) {
                 createOrUpdateGauge('pressure-gauge', data.pressure, 12, 0, '', [
@@ -130,12 +125,11 @@
             }
 
         } catch (error) {
-            console.error("Erro ao buscar dados:", error);
+           
         }
     }
 
-    // Atualiza a cada 5 segundos
+
     setInterval(updateData, 5000);
 
-    // Atualiza ao carregar a página
     window.addEventListener('load', updateData);
